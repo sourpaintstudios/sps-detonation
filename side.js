@@ -11,5 +11,5 @@ s.textContent='#p-tool:not(.min){left:0!important;right:auto!important;top:calc(
 +'body:has(#p-tool:not(.min)) #p-wet{left:100px!important}'
 +'body:has(#start:not([style*="none"])) #p-tool{display:none!important}';
 document.head.appendChild(s);
-setTimeout(function(){try{var r=document.getElementById('t-rec');if(r&&r.textContent==='Record')r.textContent='\u25CF Record Video';}catch(e){}},1500);
+setTimeout(function(){try{var r=document.getElementById('t-rec');if(r&&r.textContent==='Record')r.textContent='● Record Video';}catch(e){}},1500);
 }catch(e){console.warn('side',e);}})();

@@ -64,7 +64,7 @@ D.addEventListener('click',function(e){var b=rb();if(!b||!e.target||!(e.target==
  if(!on&&gOn())return;
  e.stopImmediatePropagation();e.preventDefault();
  if(on){end();return;}
- on=true;had=mi;b.textContent='\u25a0 Stop';b.classList.add('sel');setMode(4);
+ on=true;had=mi;b.textContent='■ Stop';b.classList.add('sel');setMode(4);
  try{if(!window.SPD.rec())window.SPD.recStart();}catch(e2){}
  try{window.SPD.note('Randomize on: the look changes by itself and the video is recording. Music and sounds stay on. Tap Stop to finish.');}catch(e3){}
  clearInterval(tk);tk=setInterval(function(){try{if(on&&!window.SPD.rec())end();}catch(e){}},1500);},true);})();

@@ -1,0 +1,6 @@
+Sour Paint Squeeze Pop Overdrive v1.12
+1) Install once:  npm i -g vercel   then  vercel login
+2) Unzip this folder, open a terminal inside it.
+3) Run:  vercel --prod
+It is already linked to project sps-detonation (team Sour Paint Studios).
+To change extras: edit extras.json and add files in media/.

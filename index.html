@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sour Paint Studios</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.webp">
+<link rel="apple-touch-icon" href="icon.webp">
+<meta name="theme-color" content="#1b1426">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+:root{--pill:rgba(255,255,255,.85);--ink:#2a2230;--ov:#f1e9da;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pill:rgba(60,48,80,.85);--ink:#f2ecf7;--ov:#1b1426}}
+:root[data-theme="dark"]{--pill:rgba(60,48,80,.85);--ink:#f2ecf7;--ov:#1b1426}
+html,body{margin:0;height:100%;overflow:hidden;background:#f1e9da;overscroll-behavior:none;touch-action:none;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+#gl{pointer-events:none}
+.bar{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;justify-content:space-between;align-items:center;padding:0 10px;gap:6px;pointer-events:none;z-index:2;}
+.pill{white-space:nowrap;background:var(--pill);color:var(--ink);font:12px/1 system-ui,sans-serif;letter-spacing:.05em;padding:9px 11px;border-radius:999px;border:0;pointer-events:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer;}
+button.pill{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;padding-top:0;padding-bottom:0}.bar .pill{padding-left:9px;padding-right:9px}
+#hint{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;transition:opacity .8s;pointer-events:none;z-index:5;}
+#dial-container {
+ position: fixed; right: -75px; top: 50%; transform: translateY(-50%);
+ width: 150px; height: 150px; border-radius: 50%;
+ background: #1a1a1a;
+ box-shadow: -5px 10px 25px rgba(0,0,0,0.7), inset -4px 0px 10px rgba(255,255,255,0.2), inset 4px 0px 10px rgba(0,0,0,0.8);
+ z-index: 4; touch-action: none; cursor: grab;
+ display: flex; align-items: center; justify-content: center;
+}
+#dial-container:active { cursor: grabbing; }
+#dial {
+ width: 124px; height: 124px; border-radius: 50%;
+ background: conic-gradient(#ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+ box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.8);
+ position: relative; transform: rotate(0deg);
+}
+#dial::after {
+ content: ''; position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px;
+ border-radius: 50%; background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.5) 100%);
+ pointer-events: none;
+}
+#dial-indicator {
+ position: absolute; top: 50%; left: 0px; width: 18px; height: 4px;
+ background: white; border-radius: 2px; transform: translateY(-50%);
+ box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 5;
+}
+.tone{position:fixed;right:12px;width:44px;height:44px;border-radius:50%;z-index:4;display:none;border:2px solid rgba(20,14,30,.8);box-shadow:0 2px 8px rgba(0,0,0,.5);touch-action:none}
+#tw{top:calc(50% - 126px);background:#f8f8f8}#tb{top:calc(50% + 80px);background:#0a0a0a}
+.tone.sel{box-shadow:0 0 0 3px #7cfc00,0 2px 8px rgba(0,0,0,.5)}
+.pnl{position:fixed;z-index:4;display:flex;flex-direction:column;align-items:center;gap:7px;transition:opacity .25s}body.gtr .pnl{opacity:.35}body.pt .pnl,body.pt #undo{opacity:.1}#p-tool,#p-sw{max-height:calc(100vh - 150px);overflow-y:auto}
+.pnl.min>:not(.grip){display:none!important}
+.grip{background:rgba(20,14,30,.78);color:#fff;font:700 10px/1 system-ui,sans-serif;letter-spacing:.06em;padding:6px 9px;border-radius:10px;cursor:grab;user-select:none;touch-action:none}
+.cap{background:rgba(20,14,30,.78);color:#fff;font:700 10px/1 system-ui,sans-serif;letter-spacing:.06em;padding:5px 8px;border-radius:10px}
+#p-hue{right:8px;top:max(12%,64px);display:none}#p-sw{right:8px;top:max(12%,64px);display:none}#p-wet{left:8px;top:max(12%,64px)}
+#sw{display:grid;grid-template-columns:repeat(5,44px);gap:5px;padding:7px;border-radius:16px;background:rgba(20,14,30,.55);touch-action:none}
+#sw button{width:44px;height:44px;border-radius:50%;border:2px solid rgba(20,14,30,.7);padding:0;touch-action:none}
+#sw button.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px #111}
+#wet{position:relative;height:clamp(110px,calc(100vh - 423px),42vh);width:28px;border-radius:14px;touch-action:none;
+ background:linear-gradient(to top,#6b4a22,#a07a3e 35%,#58a9cf 70%,#9be7ff);box-shadow:0 0 0 3px rgba(20,14,30,.7),0 4px 14px rgba(0,0,0,.5)}
+#wet i{position:absolute;left:-4px;right:-4px;height:10px;border-radius:5px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.7),0 1px 5px rgba(0,0,0,.6);pointer-events:none}
+#chip{display:flex;gap:2px;padding:5px 7px;border-radius:999px;background:var(--pill);pointer-events:auto}
+#chip i{width:13px;height:13px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(0,0,0,.45)}
+#start {
+ position:fixed;inset:0;z-index:5;
+ background:linear-gradient(rgba(10,6,20,.45),rgba(6,3,12,.85)),url(splash.webp) center/cover no-repeat,#120c22;
+ display:flex;flex-direction:column;align-items:center;
+ justify-content:flex-end;
+ gap:14px;
+ padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 40px);
+ text-align:center;overflow:hidden;
+}
+#start::before {
+ content: '';
+ position: absolute;
+ inset: 0;
+ background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.6) 65%, rgba(0,0,0,0.95) 100%);
+ pointer-events: none;
+ z-index: 0;
+}
+#start > * { z-index: 1; position: relative; }
+#start p { margin:0; opacity:1; font-size:14px; color: #fff; font-weight: 600; text-shadow: 0 2px 6px rgba(0,0,0,0.8); letter-spacing: 0.05em; }
+#shot{position:fixed;inset:0;z-index:5;background:var(--ov);color:var(--ink);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);text-align:center;overflow:auto}
+#shot img{max-width:100%;max-height:70%;border-radius:8px}
+#shot p{margin:0;opacity:.7;font-size:13px}
+#moods{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(420px,100%)}
+.mb{border:2px solid transparent;border-radius:14px;padding:12px 10px;background:rgba(255,255,255,0.85);color:#1b1426;font:600 14px system-ui,sans-serif;display:flex;flex-direction:column;gap:8px;align-items:center;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;}
+.mb.sel{border-color:#7cfc00; box-shadow: 0 0 15px rgba(124, 252, 0, 0.4);} 
+.mb em{display:flex;gap:3px}.mb i{width:16px;height:16px;border-radius:50%;display:block;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);}
+.row{display:flex;gap:10px}.go{border:0;border-radius:999px;padding:14px 26px;font:700 15px system-ui,sans-serif;background:#7cfc00;color:#111;cursor:pointer;box-shadow: 0 4px 15px rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:0.05em;transition: all 0.2s;}
+.go:hover { background: #8fff22; transform: translateY(-2px);}
+#hue{position:relative;height:54vh;width:30px;border-radius:15px;touch-action:none;
+ background:linear-gradient(to bottom,#fff 0,#fff 5%,#f00 9%,#ff0 22.67%,#0f0 36.33%,#0ff 50%,#00f 63.67%,#f0f 77.33%,#f00 91%,#000 95%,#000 100%);box-shadow:0 0 0 3px rgba(20,14,30,.7),0 4px 14px rgba(0,0,0,.5)}
+#hue::before,#wet::before{content:"";position:absolute;left:-9px;right:-9px;top:0;bottom:0}
+#hue i{position:absolute;left:-4px;right:-4px;height:10px;border-radius:5px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.75),0 1px 5px rgba(0,0,0,.6);pointer-events:none}
+.seg{display:flex;gap:6px}.seg .go{padding:9px 13px;font-size:12px;background:rgba(255,255,255,.85);box-shadow:none}.seg .go.sel{background:#7cfc00}
+#info{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(20,14,30,.88);touch-action:pan-y}
+#info.show{display:flex}
+#card{background:#2a1b4d;color:#f4ecff;border:1px solid #5a3fa0;border-radius:16px;max-width:520px;width:100%;max-height:86vh;overflow:auto;padding:18px 20px;touch-action:pan-y;font-size:14px;line-height:1.4}
+#card h2{margin:0 0 4px;font-size:20px}#card h3{margin:14px 0 4px;font-size:14px;color:#ffb347}
+#card p,#card li{margin:4px 0}#card ul,#card ol{padding-left:20px;margin:4px 0}
+.tabs{display:flex;gap:8px;margin:10px 0 6px}.tabs .pill{flex:1;background:rgba(244,236,255,.92);color:#1b1230;text-align:center}.tabs .pill.sel{background:#ffb347}
+#splash{position:fixed;inset:0;z-index:30;background:#0b0714;cursor:pointer;overflow:hidden;transition:opacity .7s;touch-action:none}
+#splash .art{position:absolute;inset:-4%;background:url(splash.webp) center/cover no-repeat;animation:kb 16s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1) translate(0,0)}to{transform:scale(1.1) translate(-1.5%,-1%)}}
+#splash .glow{position:absolute;left:52%;top:51%;width:60%;aspect-ratio:1;margin:-30% 0 0 -30%;border-radius:50%;background:radial-gradient(circle,rgba(200,255,60,.5),rgba(200,255,60,0) 65%);animation:gl 2.4s ease-in-out infinite}
+@keyframes gl{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+#splash .ring{position:absolute;left:52%;top:51%;width:40%;aspect-ratio:1;margin:-20% 0 0 -20%;border-radius:50%;border:3px solid rgba(200,255,70,.75);opacity:0;animation:rg 3.2s ease-out infinite}
+@keyframes rg{from{transform:scale(.3);opacity:.9}to{transform:scale(3);opacity:0}}
+#splash .dr{position:absolute;top:57%;width:5px;border-radius:0 0 5px 5px;background:linear-gradient(#b6ff2a,#7cfc00);transform-origin:top;transform:scaleY(0);animation:dp 4.2s ease-in infinite}
+@keyframes dp{0%{transform:scaleY(0);opacity:1}65%{transform:scaleY(1);opacity:1}100%{transform:scaleY(1);opacity:0}}
+#splash .tap{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 6%);transform:translateX(-50%);white-space:nowrap;background:rgba(10,6,20,.55);color:#e9ffb0;font:700 13px/1 system-ui,sans-serif;letter-spacing:.16em;padding:10px 16px;border-radius:999px;animation:tp 1.8s ease-in-out infinite}
+@keyframes tp{0%,100%{opacity:.55}50%{opacity:1}}
+#p-tool{left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 60px)}
+.tl{background:var(--pill);color:var(--ink);font:700 11px/1 system-ui,sans-serif;letter-spacing:.05em;padding:8px 10px;border-radius:999px;border:0;cursor:pointer;min-width:64px;touch-action:none}
+/*tg*/.tg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.tg .tl{min-width:0;min-height:44px;padding:8px 1px;font-size:9px;white-space:nowrap}.tl.sel{background:#7cfc00;color:#111}
+body.art .bar,body.art .pnl,body.art .tone,body.art #dial-container,body.art #hint,body.wild .bar,body.wild .pnl,body.wild .tone,body.wild #dial-container,body.wild #hint{display:none!important}#wback{position:fixed;left:10px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:6;display:none}body.wild #wback{display:block}
+#arthint{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:rgba(10,6,20,.6);color:#fff;font:600 12px/1 system-ui,sans-serif;padding:9px 14px;border-radius:999px;pointer-events:none;opacity:0;transition:opacity .6s;z-index:3}
+#mstrip{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 62px);display:none;gap:1px;padding:3px;border-radius:8px;background:rgba(20,14,30,.7);z-index:2;pointer-events:none}body.art #mstrip,body.wild #mstrip{display:none!important}#mstrip i{width:11px;height:16px;display:block}
+#pick{position:fixed;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(10,6,20,.84);overflow:auto}#pick.show{display:flex}
+#wscroll{position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);height:44px;display:none;overflow-x:auto;overflow-y:hidden;gap:6px;z-index:6;touch-action:pan-x;scroll-snap-type:x proximity;scrollbar-width:none;align-items:center}#wscroll::-webkit-scrollbar{display:none}body.strip #wscroll{display:flex}body.art #wscroll{display:none!important}#wscroll .pill{flex:none;scroll-snap-align:center;padding:10px 13px}#wscroll .pill.sel{background:#7cfc00;color:#111}
+body.strip #hint{top:calc(env(safe-area-inset-top,0px) + 124px);max-width:60vw}
+#undo{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:4;transition:opacity .25s}body.strip #undo{bottom:calc(env(safe-area-inset-bottom,0px) + 64px)}body.art #undo,body.wild #undo{display:none!important}
+#recstop{position:fixed;right:10px;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:7;display:none;background:#d41;color:#fff;font-weight:700}
+#recv{position:fixed;inset:0;z-index:25;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(10,6,20,.93)}#recv.show{display:flex}#recv video{max-width:100%;max-height:68vh;border-radius:8px;background:#000}
+#t-brush,#t-look{white-space:normal;line-height:1.1;font-size:8.5px}body.strip #p-tool{bottom:calc(env(safe-area-inset-bottom,0px) + 116px)}
+@media (max-height:520px) and (orientation:landscape){#p-tool{left:96px;top:64px;bottom:auto}#sw{grid-template-columns:repeat(5,44px)}#wet{height:36vh}#hue{height:46vh}}
+</style>
+<script>
+(function(){function show(){if(document.getElementById('rec'))return;var d=document.createElement('div');d.id='rec';d.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;z-index:99;background:#1b1426;color:#f4ecff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font:16px system-ui,sans-serif';d.innerHTML='<div style="font:700 20px system-ui,sans-serif">Sour Paint Detonation</div><div>Startup hit a problem. Your painting is saved on this device.</div><button id="recb" style="min-height:48px;min-width:160px;border:0;border-radius:999px;background:#7cfc00;color:#111;font:700 16px system-ui,sans-serif">Restart</button>';(document.body||document.documentElement).appendChild(d);document.getElementById('recb').onclick=function(){var go=function(){location.reload();};try{Promise.all([navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister();}));}):0,window.caches?caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x);}));}):0]).then(go,go);}catch(e){go();}};}
+window.addEventListener('error',function(e){if(!window.SPD&&(!e.target||e.target===window||e.target.tagName==='SCRIPT'))show();},true);
+window.addEventListener('load',function(){setTimeout(function(){if(!window.SPD)show();},2500);});})();
+</script>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="arthint">Tap to bring the menus back</div>
+<button class="pill" id="wback">✕ Back</button>
+<canvas id="view" role="application" aria-label="Paint canvas. Hold a finger to load paint, release to blast."></canvas>
+<div id="mstrip"></div>
+<div class="bar">
+ <button class="pill" id="mood">Mood</button>
+ <div id="chip"></div>
+ <button class="pill" id="mic" aria-label="Microphone on or off">🎤 Off</button>
+ <button class="pill" id="sv">Save</button>
+ <button class="pill" id="clr">Clear</button>
+ <button class="pill" id="inf" aria-label="About and how to play">?</button>
+</div>
+<div class="pill" id="hint">Press &amp; hold to load the brush · drag to paint · release to explode</div>
+<div class="pnl" id="p-hue"><b class="grip">COLOR</b><div id="hue"><i id="hueK"></i></div></div>
+<div class="pnl" id="p-sw"><b class="grip">COLOR</b><div id="sw"></div></div>
+<div class="tone" id="tw"></div><div class="tone" id="tb"></div>
+<div class="pnl" id="p-wet"><b class="grip">RUNNY</b><div id="wet"><i id="wetK"></i></div><span class="cap">PASTE</span></div>
+<div class="pnl" id="p-tool"><b class="grip">TOOLS</b><div class="tg"><button class="tl" data-p="slider">Slider</button><button class="tl" data-p="wheel">Wheel</button><button class="tl" data-p="lock">Locked 20</button><button class="tl" id="t-mono">Mood</button><button class="tl" id="t-grav">Gravity On</button><button class="tl" id="t-wild">Wild</button><button class="tl" id="t-tilt">Tilt Off</button><button class="tl" id="t-vib">Vibe On</button><button class="tl" id="t-shk">Shake On</button><button class="tl" id="t-view">View</button><button class="tl" id="t-blend">Blend Off</button><button class="tl" id="t-size">Canvas 1x</button><button class="tl" id="t-tv">TV Off</button><button class="tl" id="t-hide">Hide</button><button class="tl" id="t-undo">Undo</button><button class="tl" id="t-brush">Brush<br>Splat</button><button class="tl" id="t-rec">Record</button></div></div>
+<button class="pill" id="undo" aria-label="Undo last action">↶ Undo</button>
+<button class="pill" id="recstop" aria-label="Stop recording">● Stop</button>
+<div id="recv"><video id="recvid" controls playsinline></video><div class="row"><button class="pill" id="recsave">Save / Share</button><button class="pill" id="recx">Close</button></div></div>
+<div id="dial-container">
+ <div id="dial-indicator"></div>
+ <div id="dial"></div>
+</div>
+<div id="start">
+ <button class="go" id="go-f">Play</button>
+ <button class="go" id="newb" style="display:none;background:#ffb347">Start new blank canvas</button>
+ <button class="go" id="resume" style="display:none;background:rgba(255,255,255,.85)">Resume last painting</button>
+ <p style="font-size:13px;font-weight:600;max-width:340px">How to play: hold a finger to load paint, swipe, let go to throw. More fingers = bigger blast. Slide off the screen edge to cancel. Tap 🎤 to throw paint with sound.</p>
+</div>
+<div id="pick"><p style="margin:0;color:#fff;font:700 15px system-ui,sans-serif">Palette</p><div id="moods"></div><button class="pill" id="pickx">Close</button></div>
+<div id="wscroll"></div>
+<div id="splash"><div class="art"><div class="glow"></div><div class="ring"></div><div class="ring" style="animation-delay:1.07s"></div><div class="ring" style="animation-delay:2.14s"></div><div class="dr" style="left:41%;height:16%;animation-delay:.2s"></div><div class="dr" style="left:52.5%;height:22%;animation-delay:1.3s"></div><div class="dr" style="left:61%;height:14%;animation-delay:2.4s"></div><div class="dr" style="left:46%;height:11%;animation-delay:3.2s"></div></div><div class="tap">TAP TO BEGIN</div></div>
+<div id="info"><div id="card">
+ <h2>Sour Paint Studios · Detonation</h2><div style="opacity:.75">v1.10 · Sour Paint Studios</div>
+ <div class="tabs"><button class="pill sel" id="iA">About</button><button class="pill" id="iH">How-to</button></div>
+ <div id="pA"><p>A paint-throwing instrument. Hold to load a brush with six colors, drag to flick paint, release to detonate. Sound from a guitar or voice throws paint for you.</p>
+ <h3>Release notes</h3><ul>
+ <li>v1.10 — Bigger canvas: Canvas now goes 1x, 1.5x, 2x, 3x, 4x and 6x (Epic). Menus fade almost out while a finger is painting. Undo: a button at bottom right and in TOOLS steps back your last blasts and strokes (Clear can be undone too). Brush: TOOLS, Brush cycles the paint shape from Splat to guitar shapes: Pick, Strat, Les Paul, Tele, Flying V, Explorer and Acoustic. Record: TOOLS, Record captures your painting and the game sound (and your guitar when Guitar or Mic is on) as a video you can save or share. Three new Guitar looks: Strings, Rain and Burst. Guitar mode layout: the Trace line moved up so menus no longer cover it, menus ghost while you play, and TOOLS stays above the palette strip.</li>
+ <li>v1.09 — Canvas Size: TOOLS, Canvas 1x / 1.5x / 2x makes the paint area larger, like desktop mode on a phone. Brushes and splats get smaller on screen so you have more room to paint. Your painting stays. TV mode: TOOLS, TV On hides the menus, goes full screen, locks landscape and keeps the screen awake. To show it on a TV, cast your phone screen (Quick Settings, Smart View or Cast). Guitar mode still listens on the phone. Tap the back button at top left to leave TV mode. Blend size: with two fingers down in Blend, spread to make the blender bigger and squeeze to make it smaller. A Hide button in TOOLS tucks all menus away; tap a menu tab to bring one back. Menus fade to a ghost while a finger is painting, so they stop hiding the canvas. The hint line moved to the top and TOOLS and the color picker can no longer run off the screen. Slider hit areas are wider and the canvas has screen-reader labels.</li>
+ <li>v1.08 — Blend mode: while one finger is loading, double-tap with a second finger to switch it to Blend. It stops the charge, hums, and smears and mixes the paint under your finger with no blast. Double-tap again to load. TOOLS has a Blend On/Off button. A LOAD or BLEND tag shows beside each ring. Layout fixes: TOOLS fits in landscape, all buttons are at least 44 px, and a startup problem now shows a Restart screen.</li>
+ <li>v1.07 — Guitar mode (TOOLS, Guitar On): plays paint from your guitar. Each note has its own color, an in-tune note is a pure color, and a sharp or flat note blends toward its neighbor. Five looks: Throw, Trace, Comets, Lanes, Blend. A palette strip along the bottom appears in Wild and Guitar mode: flick it to change the palette. Wild can now use any palette.</li>
+ <li>v1.06 — Start is one Play button. Mood opens a palette picker inside the game (moods plus Mono) and applies instantly. Mono is 20 shades of one color, with a shade strip under the top bar. Paint now flies visibly and bounces off the screen edges. Paint from different throws collides in mid-air and bursts. Fingers held close together charge faster and fire one merged blast. Quick taps are a soft pop. View and Wild no longer go black.</li>
+ <li>v1.05 — Wild mode (no menus, random colors). Tilt: paint runs toward the low side of an Android phone. Vibe and Shake switches. Each extra finger adds sound layers, vibration, shake and blast size. Throws follow your swipe direction and speed. Slide off the screen edge to cancel. Charging is slower so it is harder to overload. Paint mixes harder on impact. New fingers start in different colors. Mono shows On/Off. Clearer start screen and How-to.</li>
+ <li>v1.04 — Slider, Wheel and Locked 20 are now three separate buttons on the TOOLS tab. Each finger keeps its own color: the color control changes only the finger you pressed last, so you can charge several fingers in different colors and release them together. Each new finger adds a louder, deeper-bass charge sound with a faster pulse; from the fifth finger the pitch jumps high. New app icon.</li>
+ <li>v0.4–v1.03 — oil and watercolor paint, moods, mixing, drips, thick-paint lighting, mic, panels, View mode, New/Resume start, Gravity switch, explosion sound. Built on the V5 Meta and Gemini build.</li></ul></div>
+ <div id="pH" style="display:none"><ol>
+ <li><b>Play:</b> hold a finger to load paint. The longer you hold, the bigger the blast. Swipe and let go to throw it that way.</li>
+ <li><b>Cancel:</b> slide your finger off the screen edge and let go. Nothing fires.</li>
+ <li><b>More fingers:</b> every extra finger adds sound, shake and size. Let go of any finger to fire its paint.</li>
+ <li><b>Colors:</b> TOOLS has Slider, Wheel and Locked 20. The control changes the finger you pressed last. Earlier fingers keep their color.</li>
+ <li><b>Mono:</b> Mood button, then Mono (or TOOLS, Mono On): every paint is one of 20 shades of your color, black to white. The strip under the top bar shows them. Pick white, black or gray for gray shades.</li>
+ <li><b>Palette:</b> the Mood button opens the palette picker: pick a mood or Mono. It applies at once.</li>
+<li><b>Guitar:</b> TOOLS, Guitar On, allow the microphone, stay quiet for 1 second, then play. Each note gets a color (E is always the same color). Look: Throw = paint thrown, Trace = heartbeat line, Comets = glowing dots with trails on white, Lanes = six string lanes, Blend = trace plus paint, Strings = six strings that wiggle and splash, Rain = paint falls from the top, Burst = rings pop out of the center. Use headphones if the phone speaker is loud.</li>
+<li><b>Palette strip:</b> in Wild or Guitar mode, flick the strip at the bottom to change the palette. Random = random colors.</li>
+<li><b>Blend:</b> hold one finger to load, then double-tap quickly with a second finger. The ring turns blue, a hum plays, and your finger smears the paint under it. Letting go does not blast. Spread two fingers apart to make the blender bigger, squeeze to make it smaller. Double-tap again to go back to loading. TOOLS, Blend On/Off does it for every finger. The tag beside the ring says LOAD or BLEND.</li>
+<li><b>Hide:</b> TOOLS, Hide tucks all menus down to small tabs. Tap a tab (TOOLS, COLOR, RUNNY) to open it again. Drag a tab to move a menu anywhere.</li>
+<li><b>Canvas Size:</b> TOOLS, Canvas button cycles 1x, 1.5x, 2x, 3x, 4x, 6x (Epic). Bigger means more canvas and smaller brushes. Your painting is kept when you switch.</li>
+<li><b>Undo:</b> tap the Undo button (bottom right, or TOOLS, Undo). It steps back one blast, stroke or Clear. It keeps the last few steps only, fewer on the biggest canvases.</li>
+<li><b>Brush:</b> TOOLS, Brush cycles Splat, Pick, Strat, Les Paul, Tele, Flying V, Explorer, Acoustic. Blasts and splats are drawn as that guitar shape.</li>
+<li><b>Record:</b> TOOLS, Record starts a video of the painting with the game sound. In Guitar or Mic mode your playing is recorded too. Tap the red Stop button to finish, then Save / Share. Up to 10 minutes.</li>
+<li><b>TV mode:</b> TOOLS, TV On. Menus hide, the screen stays awake and it locks to landscape. Cast your phone to the TV: pull down Quick Settings and tap Smart View or Cast, then pick the TV (on an LG, open its Screen Share app first). Use Canvas 1.5x or 2x on a big screen. Tap the top-left back button to exit.</li>
+<li><b>Gather:</b> hold several fingers close together. They charge faster. Let go of one and they all fire as one merged blast.</li>
+ <li><b>Gravity / Tilt:</b> Gravity Off = paint stays put. Tilt On (Android) makes paint run toward the low side of your phone.</li>
+ <li><b>Vibe / Shake:</b> switch phone vibration and screen shake on or off.</li>
+ <li><b>Wild:</b> no menus, random colors, no drips. Tap Back (top-left) to return.</li>
+ <li><b>View:</b> hides menus so you see only the art. Tap to return.</li>
+ <li><b>Runny:</b> left meter. Up = thin paint that runs. Down = thick paste.</li>
+ <li><b>Panels:</b> drag a tab to move a panel; tap it to fold it.</li>
+ <li><b>Mic:</b> tap the 🎤 button and allow the microphone. Notes you sing or play throw paint.</li>
+ <li><b>Save</b> shows the picture: press and hold to keep it. <b>Clear</b> wipes the canvas.</li></ol></div>
+ <div class="tabs"><button class="pill" id="iX">Close</button></div>
+</div></div>
+<div id="shot">
+ <img id="shotimg" alt="Your painting">
+ <p>Press and hold the image to save it</p>
+ <button class="pill" id="shotx">Close</button>
+</div>
+<script src="app.js"></script>
+<script src="guitar.js"></script>
+</body>
+</html>

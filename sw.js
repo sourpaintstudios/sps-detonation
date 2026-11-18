@@ -1,4 +1,0 @@
-const C='spd-v122',F=['./','index.html','manifest.json','app.js','patch.js','app1.js','app2.js','app3.js','app4.js','ui.js','tv.js','guitar.js','jukebox.js','perf.js','jukebox.webp','splash.webp','icon.webp','icon-192.webp','icon-512.webp','extras.json','fluid.js','side.js','lights.js','shuffle.js','modes.js','simple.html'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)));self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim();});
-self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET'||/\.mp4($|\?)/.test(r.url)||r.headers.has('range'))return;e.respondWith(fetch(r).then(s=>{if(s.ok){const c=s.clone();caches.open(C).then(x=>x.put(r,c)).catch(()=>{});}return s;}).catch(()=>caches.match(r).then(m=>m||caches.match('index.html'))));});
